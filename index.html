@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conventional Operations Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; /* Lighter Gray Background */
+            color: #1f2937; /* Dark Gray text */
+        }
+        .chart-card {
+            background-color: #ffffff; /* White card background */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb; /* Light gray border */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            transition: transform 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827; /* Dark text */
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #111827; /* Dark text */
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280; /* Medium gray text */
+            text-transform: uppercase;
+        }
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            min-height: 260px; /* Adjusted height for balance */
+        }
+        .summary-chart-container {
+             position: relative;
+            flex-grow: 1;
+            min-height: 280px;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        /* Tab styling */
+        .tab-button {
+            border-color: transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+            color: #374151; /* gray-700 */
+            border-color: #d1d5db; /* gray-300 */
+        }
+        .tab-button.active {
+            color: #1d4ed8; /* blue-700 */
+            border-color: #1d4ed8; /* blue-700 */
+            font-weight: 600;
+            background-color: #eff6ff; /* blue-50 */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+
+        <header class="mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Conventional Operation Dashboard</h1>
+                    <p class="text-gray-500 mt-1">Real-time port operations overview.</p>
+                </div>
+                 <div class="flex items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 bg-white border border-gray-300 text-gray-800 text-sm font-medium rounded-lg p-2.5 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <span id="current-date-display"></span>
+                            <span class="text-gray-300">|</span>
+                            <span id="current-time-display"></span>
+                        </div>
+                        <button id="refresh-button" title="Refresh Dashboard" class="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-500"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M22 11.5A10 10 0 0 0 3.5 12.5"/><path d="M2 12.5a10 10 0 0 0 18.5-1"/></svg>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="mb-6 border-b border-gray-200">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="dashboardTabs" role="tablist">
+                <li role="presentation">
+                    <button class="tab-button inline-block p-4 border-b-2 rounded-t-lg" id="general-tab" type="button" role="tab" aria-controls="general-content" aria-selected="true">General Information</button>
+                </li>
+                <li role="presentation">
+                    <button class="tab-button inline-block p-4 border-b-2 rounded-t-lg" id="breakdry-tab" type="button" role="tab" aria-controls="breakdry-content" aria-selected="false">Break/Dry Bulk</button>
+                </li>
+                <li role="presentation">
+                    <button class="tab-button inline-block p-4 border-b-2 rounded-t-lg" id="liquid-tab" type="button" role="tab" aria-controls="liquid-content" aria-selected="false">Liquid Bulk</button>
+                </li>
+                <li role="presentation">
+                    <button class="tab-button inline-block p-4 border-b-2 rounded-t-lg" id="roro-tab" type="button" role="tab" aria-controls="roro-content" aria-selected="false">RORO</button>
+                </li>
+                <li role="presentation">
+                    <button class="tab-button inline-block p-4 border-b-2 rounded-t-lg" id="warehouse-tab" type="button" role="tab" aria-controls="warehouse-content" aria-selected="false">Warehouse & Yard</button>
+                </li>
+            </ul>
+        </div>
+
+        <div id="dashboardTabContent">
+            <div id="general-content" class="tab-content" role="tabpanel" aria-labelledby="general-tab">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="chart-card lg:col-span-1">
+                         <h2 class="card-title text-base mb-2">Weather Forecast (Ho Chi Minh City)</h2>
+                         <div class="grid grid-cols-3 gap-2 text-center my-auto">
+                             <div>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-indigo-400"><path d="M12 21a9 9 0 1 1 0-18Z"/><path d="M12 2v2"/><path d="M12 20v2"/></svg>
+                                 <p id="weather-now-label" class="font-semibold text-sm mt-1">Now</p>
+                                 <p class="text-md">28°C</p>
+                                 <p class="text-xs text-gray-400">Clear Night</p>
+                             </div>
+                             <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-gray-400"><path d="M16 16.5A4.2 4.2 0 0 0 12 12a4.2 4.2 0 0 0-4 4.5"/><path d="M16 16.5A4.2 4.2 0 0 1 12 21a4.2 4.2 0 0 1-4-4.5"/><path d="M20 16.5A4.2 4.2 0 0 0 16 12a4.2 4.2 0 0 0-4 4.5"/><path d="M20 16.5A4.2 4.2 0 0 1 16 21a4.2 4.2 0 0 1-4-4.5"/><path d="M8 12a4.2 4.2 0 0 0-4 4.5A4.2 4.2 0 0 0 8 21"/><path d="m8 12 4-4 4 4"/><path d="M12 3v5"/><path d="m5 8 1-1"/><path d="m19 8-1-1"/></svg>
+                                 <p class="font-semibold text-sm mt-1">Next Hour</p>
+                                 <p class="text-lg">28°C</p>
+                                 <p class="text-sm text-gray-400">Cloudy</p>
+                             </div>
+                             <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-blue-400"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M22 10a3 3 0 0 0-3-3h-2.207a5.502 5.502 0 0 0-10.702.5"/><path d="M8 19v1"/><path d="M12 19v2"/><path d="M16 19v1"/></svg>
+                                 <p class="font-semibold text-sm mt-1">+2 Hours</p>
+                                 <p class="text-md">27°C</p>
+                                 <p class="text-sm text-gray-400">Light Rain</p>
+                             </div>
+                         </div>
+                    </div>
+                    <div class="chart-card lg:col-span-1">
+                        <h2 class="card-title">Vessel Positions</h2>
+                        <div class="flex flex-col items-center justify-center h-full gap-y-4">
+                            <div class="text-center">
+                                <p id="wharves-count" class="stat-value">0</p>
+                                <p class="stat-label">At Wharves/Jetty</p>
+                            </div>
+                            <div class="text-center">
+                                <p id="anchorage-count" class="stat-value">0</p>
+                                <p class="stat-label">At Anchorage</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Berth Occupancy</h2>
+                        <div class="chart-container"><canvas id="terminalOccupancyChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Cargo Operation (Daily Tonnage/QTY)</h2>
+                        <p id="vessels-in-operation-label" class="text-center text-sm text-gray-500 -mt-2 mb-2"></p>
+                        <div class="chart-container"><canvas id="cargoOperationChart"></canvas></div>
+                    </div>
+                     <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Direct vs Indirect Operation(Daily)</h2>
+                        <div class="chart-container"><canvas id="directIndirectChart"></canvas></div>
+                    </div>
+                     <div class="chart-card lg:col-span-4">
+                        <div id="cumulativeHandlingContainer" class="chart-container" style="min-height: 350px;">
+                            <canvas id="hourlyHandlingChart"></canvas>
+                             <div id="no-ops-message" class="hidden absolute inset-0 flex items-center justify-center text-gray-500 text-lg font-semibold">
+                                No Cargo Operations for Today
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <div id="breakdry-content" class="tab-content hidden" role="tabpanel" aria-labelledby="breakdry-tab">
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Break/Dry Bulk Summary(Daily)</h2>
+                        <div class="summary-chart-container"><canvas id="breakDrySummaryChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Break/Dry Handling vs Balance</h2>
+                        <div class="chart-container"><canvas id="breakDryHandlingChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Break/Dry Bulk Productivity</h2>
+                        <div id="breakDryProductivityContainer" class="flex flex-wrap justify-around items-center h-full gap-4"></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Break/Dry Bulk Delay</h2>
+                        <div class="chart-container"><canvas id="breakDryDelayChart"></canvas></div>
+                    </div>
+                 </div>
+            </div>
+
+            <div id="liquid-content" class="tab-content hidden" role="tabpanel" aria-labelledby="liquid-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Liquid Bulk Summary(Daily)</h2>
+                        <div class="summary-chart-container"><canvas id="liquidBulkSummaryChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Liquid Handling vs Balance</h2>
+                        <div class="chart-container"><canvas id="liquidHandlingChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Liquid Bulk Productivity</h2>
+                        <div id="liquidProductivityContainer" class="flex flex-wrap justify-around items-center h-full gap-4"></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">Liquid Bulk Delay</h2>
+                        <div class="chart-container"><canvas id="liquidDelayChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="roro-content" class="tab-content hidden" role="tabpanel" aria-labelledby="roro-tab">
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">RORO Summary(Daily)</h2>
+                        <div class="summary-chart-container"><canvas id="roroSummaryChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">RORO Handling vs Balance</h2>
+                        <div class="chart-container"><canvas id="roroHandlingChart"></canvas></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">RORO Productivity</h2>
+                        <div id="roroProductivityContainer" class="flex flex-wrap justify-around items-center h-full gap-4"></div>
+                    </div>
+                    <div class="chart-card lg:col-span-2">
+                        <h2 class="card-title">RORO Delay</h2>
+                        <div class="chart-container"><canvas id="roroDelayChart"></canvas></div>
+                    </div>
+                 </div>
+            </div>
+
+            <div id="warehouse-content" class="tab-content hidden" role="tabpanel" aria-labelledby="warehouse-tab">
+                 <div class="grid grid-cols-1 gap-6">
+                    <div class="chart-card">
+                        <h2 class="card-title">Warehouse/Yard Handling(Daily)</h2>
+                        <div class="chart-container" style="min-height: 400px"><canvas id="warehouseHandlingChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h2 class="card-title">Yard & Warehouse Occupancy</h2>
+                        <div class="chart-container" style="min-height: 400px"><canvas id="yardWarehouseOccupancyChart"></canvas></div>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // =================================================================================
+    // --- KHU VỰC DỮ LIỆU GỐC (SOURCE OF TRUTH) ---
+    // Bạn có thể chỉnh sửa dữ liệu của các tàu và kho bãi tại đây.
+    // =================================================================================
+    const dashboardData = {
+        totalBerths: 21,
+        allBerths: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'J1', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9'],
+        vessels: [
+            // Dữ liệu tàu hàng rời/khô (Break/Dry Bulk) - Target Rate = 100
+            { name: 'MV Pelorus', jpvc: 'JPVC24-001', cargoSubType: 'Break Bulk', status: 'ATW', berthName: 'B1', atb: '23/06 08:00', etd: '25/06 18:00', dailyHandled: 3250, totalHandled: 25000, totalCargo: 40000, dailyDelay: 2.5, targetRate: 100 },
+            { name: 'MV Intrepid', jpvc: 'JPVC24-002', cargoSubType: 'Dry Bulk', status: 'ATW', berthName: 'B2', atb: '23/06 10:00', etd: '26/06 06:00', dailyHandled: 800, totalHandled: 18000, totalCargo: 23000, dailyDelay: 1.0, targetRate: 100 },
+            { name: 'MV Alva', jpvc: 'JPVC24-003', cargoSubType: 'Dry Bulk', status: 'ATW', berthName: 'B3', atb: '23/06 12:00', etd: '25/06 22:00', dailyHandled: 950, totalHandled: 15000, totalCargo: 25000, dailyDelay: 2.7, targetRate: 100 },
+            { name: 'MV Bravo', jpvc: 'JPVC24-004', cargoSubType: 'Dry Bulk', status: 'ATA', berthName: 'N/A', atb: 'N/A', etd: 'N/A', dailyHandled: 0, totalHandled: 0, totalCargo: 18000, dailyDelay: 0, targetRate: 100 },
+            
+            // Dữ liệu tàu hàng lỏng (Liquid Bulk) - Target Rate = 100
+            { name: 'MT Stolt', jpvc: 'JPVC24-101', cargoSubType: 'Liquid Bulk', status: 'ATW', berthName: 'J1', atb: '24/06 01:00', etd: '24/06 23:00', dailyHandled: 7500, totalHandled: 12000, totalCargo: 20000, dailyDelay: 0.5, targetRate: 100 },
+            { name: 'MT Nautilus', jpvc: 'JPVC24-102', cargoSubType: 'Liquid Bulk', status: 'ATW', berthName: 'J2', atb: '24/06 03:00', etd: '25/06 12:00', dailyHandled: 4000, totalHandled: 28000, totalCargo: 40000, dailyDelay: 1.5, targetRate: 100 },
+            { name: 'MT Ace', jpvc: 'JPVC24-103', cargoSubType: 'Liquid Bulk', status: 'ATW', berthName: 'J3', atb: '24/06 05:00', etd: '25/06 05:00', dailyHandled: 800, totalHandled: 9000, totalCargo: 12000, dailyDelay: 0, targetRate: 100 },
+            { name: 'MT Triton', jpvc: 'JPVC24-104', cargoSubType: 'Liquid Bulk', status: 'ATW', berthName: 'J4', atb: '24/06 08:00', etd: '25/06 16:00', dailyHandled: 2200, totalHandled: 15000, totalCargo: 25000, dailyDelay: 1.0, targetRate: 100 },
+            { name: 'MT Neptune', jpvc: 'JPVC24-105', cargoSubType: 'Liquid Bulk', status: 'ATW', berthName: 'J5', atb: '24/06 09:00', etd: '26/06 09:00', dailyHandled: 5500, totalHandled: 10000, totalCargo: 18000, dailyDelay: 0.8, targetRate: 100 },
+
+            // Dữ liệu tàu RORO - Target Rate = 30
+            { name: 'MV Liberty', cargoSubType: 'RORO', status: 'ATW', berthName: 'B4', atb: '22/06 18:00', etd: '24/06 18:00', dailyHandled: 800, totalHandled: 450, totalCargo: 960, dailyDelay: 1.2, targetRate: 30 },
+            { name: 'MV Freedom', cargoSubType: 'RORO', status: 'ATW', berthName: 'B5', atb: '22/06 20:00', etd: '24/06 22:00', dailyHandled: 450, totalHandled: 550, totalCargo: 700, dailyDelay: 0.5, targetRate: 30 },
+            { name: 'MV Spirit', cargoSubType: 'RORO', status: 'ATW', berthName: 'B6', atb: '23/06 00:00', etd: '25/06 00:00', dailyHandled: 150, totalHandled: 510, totalCargo: 610, dailyDelay: 1.3, targetRate: 30 },
+            { name: 'MV Independence', cargoSubType: 'RORO', status: 'ATW', berthName: 'B7', atb: '23/06 02:00', etd: '24/06 14:00', dailyHandled: 50, totalHandled: 300, totalCargo: 420, dailyDelay: 0, targetRate: 30 },
+            { name: 'MV Voyager', cargoSubType: 'RORO', status: 'ATW', berthName: 'B10', atb: '24/06 11:00', etd: '25/06 11:00', dailyHandled: 250, totalHandled: 400, totalCargo: 600, dailyDelay: 0.9, targetRate: 30 },
+            
+            // Dữ liệu các tàu mới cập cảng
+            { name: 'MV Titan', cargoSubType: 'Break Bulk', status: 'ATW', berthName: 'B8', atb: '24/06 06:00', etd: '26/06 12:00', dailyHandled: 2400, totalHandled: 22000, totalCargo: 35000, dailyDelay: 1.5, targetRate: 100 },
+            { name: 'MV Atlas', cargoSubType: 'Dry Bulk', status: 'ATW', berthName: 'B9', atb: '24/06 07:00', etd: '27/06 00:00', dailyHandled: 1500, totalHandled: 16000, totalCargo: 28000, dailyDelay: 2.0, targetRate: 100 },
+            
+            // Dữ liệu các tàu đang neo đậu
+            { name: 'MV Pacific', jpvc: 'JPVC24-005', cargoSubType: 'Break/Dry', status: 'ATA', berthName: 'N/A', atb: 'N/A', etd: 'N/A' },
+            { name: 'MT Horizon', jpvc: 'JPVC24-105', cargoSubType: 'Liquid', status: 'ATA', berthName: 'N/A', atb: 'N/A', etd: 'N/A' },
+            { name: 'MV Unity', jpvc: 'JPVC24-205', cargoSubType: 'RORO', status: 'ATA', berthName: 'N/A', atb: 'N/A', etd: 'N/A' },
+        ],
+        ancillary: {
+            maintenanceBerths: ['B12', 'J9'],
+            warehouseHandling: {
+                discToWH:   { MT: 1100, QTY: 450, M3: 3300 },
+                handOut:    { MT: 750,  QTY: 300, M3: 2250 },
+                loadFromWH: { MT: 900,  QTY: 400, M3: 2700 },
+                handIn:     { MT: 1000, QTY: 250, M3: 3000 }
+            },
+            yardOccupancy: {
+                'WH1': { QTY: 5200, MT: 1500, M3: 4500 },
+                'WH2': { QTY: 3400, MT: 2800, M3: 8400 },
+                'WH3': { QTY: 8100, MT: 4500, M3: 13500 },
+                'WH4': { QTY: 6700, MT: 3300, M3: 9900 },
+                'WH5': { QTY: 4500, MT: 2200, M3: 6600 }
+            },
+            directIndirectByCargo: {
+                'Break Bulk': { direct: 1200, indirect: 650 },
+                'Dry Bulk':   { direct: 900, indirect: 1100 },
+                'Liquid Bulk':{ direct: 4500, indirect: 2500 },
+                'RORO':       { direct: 500, indirect: 280 }
+            }
+        }
+    };
+
+    // Global chart instance variables
+    const chartInstances = {};
+    let lastRefreshedTime = new Date();
+
+    // --- UTILITY FUNCTIONS ---
+    function setCurrentDateTime(now) {
+        const dateEl = document.getElementById('current-date-display');
+        const timeEl = document.getElementById('current-time-display');
+        const weatherLabel = document.getElementById('weather-now-label');
+        
+        const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' };
+        const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' };
+        const weatherTimeOptions = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' };
+
+        dateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
+        timeEl.textContent = now.toLocaleTimeString('en-GB', timeOptions);
+        weatherLabel.textContent = `Now (${now.toLocaleTimeString('en-GB', weatherTimeOptions)})`;
+    }
+
+    function getTooltipFooterCallback() {
+        const timeFormatOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        return function(tooltipItems) {
+            return 'Data as of: ' + lastRefreshedTime.toLocaleTimeString('en-GB', timeFormatOptions);
+        };
+    }
+    
+    function createGauge(vessel, unit) {
+        const actualRate = vessel.dailyHandled > 0 && (24 - vessel.dailyDelay) > 0 ? vessel.dailyHandled / (24 - vessel.dailyDelay) : 0;
+        const percentage = vessel.targetRate > 0 ? (actualRate / vessel.targetRate) * 100 : 0;
+        const angle = Math.min(180, Math.max(0, (percentage / 150) * 180));
+        let gaugeColor;
+        if (percentage < 50) {
+            gaugeColor = '#ef4444'; // Red
+        } else if (percentage <= 80) {
+            gaugeColor = '#3b82f6'; // Blue
+        } else {
+            gaugeColor = '#22c55e'; // Green
+        }
+
+        return `
+            <div class="flex flex-col items-center justify-center p-2">
+                <div class="relative w-40 h-20">
+                    <svg class="w-full h-full" viewBox="0 0 100 50">
+                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#e5e7eb" stroke-width="12"></path>
+                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="${gaugeColor}" stroke-width="12" stroke-dasharray="${(angle/180) * 125.6}, 125.6" stroke-linecap="round"></path>
+                    </svg>
+                    <div class="absolute bottom-0 w-full text-center">
+                         <span class="text-2xl font-bold" style="color: ${gaugeColor};">${Math.round(percentage)}%</span>
+                    </div>
+                </div>
+                <div class="text-center mt-2">
+                     <div class="text-sm font-semibold text-gray-700">${vessel.name}</div>
+                     <div class="text-xs text-gray-500">${Math.round(actualRate)} / ${vessel.targetRate} ${unit}</div>
+                </div>
+            </div>`;
+    }
+
+    function destroyAllCharts() {
+        for (const id in chartInstances) {
+            if (chartInstances[id]) {
+                chartInstances[id].destroy();
+                delete chartInstances[id];
+            }
+        }
+    }
+    
+    // =================================================================================
+    // --- KHU VỰC CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ (HARDCODED DATA PREPARATION) ---
+    // Chức năng này xử lý dữ liệu gốc và tạo ra các cấu trúc dữ liệu sẵn sàng
+    // cho các biểu đồ. Bạn có thể xem và chỉnh sửa logic tính toán tại đây.
+    // =================================================================================
+    function prepareAllChartData(now) {
+        const currentHour = now.getHours();
+        const workingVessels = dashboardData.vessels.filter(v => v.status === 'ATW');
+
+        const chartData = {};
+
+        // --- Dữ liệu cho [Berth Occupancy] ---
+        const occupiedBerths = workingVessels.map(v => v.berthName);
+        const maintenanceBerths = dashboardData.ancillary.maintenanceBerths;
+        chartData.terminalOccupancy = {
+            labels: ['Occupied', 'Un-Occupied', 'Maintenance'],
+            datasets: [{ 
+                data: [
+                    occupiedBerths.length, 
+                    dashboardData.totalBerths - occupiedBerths.length - maintenanceBerths.length, 
+                    maintenanceBerths.length
+                ], 
+                backgroundColor: ['#3b82f6', '#9ca3af', '#f59e0b'] 
+            }]
+        };
+
+        // --- Dữ liệu cho [Cargo Operation (Daily Tonnage/QTY)] ---
+        const cargoOpTonnageData = { 
+            'Liquid Bulk': workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk').reduce((s, v) => s + v.dailyHandled, 0), 
+            'Dry Bulk': workingVessels.filter(v => v.cargoSubType === 'Dry Bulk').reduce((s, v) => s + v.dailyHandled, 0), 
+            'Break Bulk': workingVessels.filter(v => v.cargoSubType === 'Break Bulk').reduce((s, v) => s + v.dailyHandled, 0) 
+        };
+        const cargoOpQtyData = { 
+            'RORO': workingVessels.filter(v => v.cargoSubType === 'RORO').reduce((s, v) => s + v.dailyHandled, 0) 
+        };
+        chartData.cargoOperation = {
+            labels: [...Object.keys(cargoOpTonnageData), ...Object.keys(cargoOpQtyData)],
+            datasets: [
+                { label: 'Tonnage (MT)', data: [...Object.values(cargoOpTonnageData), NaN], backgroundColor: '#3b82f6', yAxisID: 'y' },
+                { label: 'Quantity (QTY)', data: [NaN, NaN, NaN, ...Object.values(cargoOpQtyData)], backgroundColor: '#a78bfa', yAxisID: 'y1' }
+            ]
+        };
+
+        // --- Dữ liệu cho [Direct vs Indirect Operation(Daily)] ---
+        const directIndirectData = dashboardData.ancillary.directIndirectByCargo;
+        chartData.directIndirect = {
+            labels: ['Break Bulk', 'Dry Bulk', 'Liquid Bulk', 'RORO'],
+            datasets: [
+                { label: 'Direct', data: [directIndirectData['Break Bulk'].direct, directIndirectData['Dry Bulk'].direct, directIndirectData['Liquid Bulk'].direct, NaN], backgroundColor: '#1d4ed8', yAxisID: 'yTonnage' },
+                { label: 'Indirect', data: [directIndirectData['Break Bulk'].indirect, directIndirectData['Dry Bulk'].indirect, directIndirectData['Liquid Bulk'].indirect, NaN], backgroundColor: '#60a5fa', yAxisID: 'yTonnage' },
+                { label: 'Direct', data: [NaN, NaN, NaN, directIndirectData['RORO'].direct], backgroundColor: '#7e22ce', yAxisID: 'yQty' },
+                { label: 'Indirect', data: [NaN, NaN, NaN, directIndirectData['RORO'].indirect], backgroundColor: '#c084fc', yAxisID: 'yQty' }
+            ]
+        };
+
+        // --- Dữ liệu cho [Cumulative Handling] ---
+        const createCumulativeData = (cargoType) => {
+            const relevantVessels = dashboardData.vessels.filter(v => v.cargoSubType === cargoType);
+            const totalDaily = relevantVessels.reduce((sum, v) => sum + v.dailyHandled, 0);
+            const hourlyRate = totalDaily > 0 ? totalDaily / 24 : 0;
+            const cumulativeData = [0];
+            for (let hour = 0; hour < 23; hour++) {
+                cumulativeData.push(cumulativeData[hour] + hourlyRate);
+            }
+            return cumulativeData;
+        };
+        chartData.cumulativeHandling = {
+            labels: Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+            datasets: [
+                { label: 'Break Bulk (MT)', data: createCumulativeData('Break Bulk'), borderColor: '#4f46e5', backgroundColor: '#4f46e5' + '33', yAxisID: 'yTonnage', fill: true, tension: 0.4 },
+                { label: 'Dry Bulk (MT)', data: createCumulativeData('Dry Bulk'), borderColor: '#16a34a', backgroundColor: '#16a34a' + '33', yAxisID: 'yTonnage', fill: true, tension: 0.4 },
+                { label: 'Liquid Bulk (MT)', data: createCumulativeData('Liquid Bulk'), borderColor: '#ea580c', backgroundColor: '#ea580c' + '33', yAxisID: 'yTonnage', fill: true, tension: 0.4 },
+                { label: 'RORO (QTY)', data: createCumulativeData('RORO'), borderColor: '#0d9488', backgroundColor: '#0d9488' + '33', yAxisID: 'yQty', fill: true, tension: 0.4 }
+            ]
+        };
+
+        // --- Dữ liệu cho các biểu đồ [Summary] ---
+        const createSummaryDatasets = (vessels) => {
+            const vesselColors = ['#4f46e5', '#db2777', '#16a34a', '#ea580c', '#0d9488', '#d946ef', '#65a30d', '#0891b2'];
+            const randomVesselIndex = Math.floor(Math.random() * vessels.length);
+            const randomStartHour = Math.floor(Math.random() * 8) + 1;
+
+            return vessels.map((vessel, index) => {
+                const hourlyRate = vessel.dailyHandled > 0 ? vessel.dailyHandled / 24 : 0;
+                const startHour = (index === randomVesselIndex) ? randomStartHour : 0;
+                const dataForChart = [];
+                let cumulativeValue = 0;
+
+                for (let hour = 0; hour <= 24; hour++) {
+                    if (hour < startHour) {
+                        dataForChart.push(0);
+                    } else if (hour === startHour) {
+                        dataForChart.push(0);
+                        cumulativeValue += hourlyRate;
+                    } else {
+                        dataForChart.push(cumulativeValue);
+                        cumulativeValue += hourlyRate;
+                    }
+                }
+                return {
+                    label: vessel.name,
+                    data: dataForChart,
+                    borderColor: vesselColors[index % vesselColors.length],
+                    backgroundColor: vesselColors[index % vesselColors.length] + '33',
+                    fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5
+                };
+            });
+        };
+        chartData.breakDrySummary = {
+            labels: chartData.cumulativeHandling.labels,
+            datasets: createSummaryDatasets(workingVessels.filter(v => ['Break Bulk', 'Dry Bulk'].includes(v.cargoSubType)))
+        };
+        chartData.liquidBulkSummary = {
+            labels: chartData.cumulativeHandling.labels,
+            datasets: createSummaryDatasets(workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk'))
+        };
+        chartData.roroSummary = {
+            labels: chartData.cumulativeHandling.labels,
+            datasets: createSummaryDatasets(workingVessels.filter(v => v.cargoSubType === 'RORO'))
+        };
+        
+        // --- Dữ liệu cho các biểu đồ [Handling vs Balance] ---
+        const createHandlingBalanceDatasets = (vessels) => ([
+            { label: 'Balance', data: vessels.map(v => v.totalCargo - v.totalHandled), backgroundColor: '#ef4444' },
+            { label: 'Handling', data: vessels.map(v => v.totalHandled), backgroundColor: '#3b82f6' }
+        ]);
+        chartData.breakDryHandling = {
+            labels: workingVessels.filter(v => ['Break Bulk', 'Dry Bulk'].includes(v.cargoSubType)).map(v => v.name),
+            datasets: createHandlingBalanceDatasets(workingVessels.filter(v => ['Break Bulk', 'Dry Bulk'].includes(v.cargoSubType)))
+        };
+        chartData.liquidHandling = {
+            labels: workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk').map(v => v.name),
+            datasets: createHandlingBalanceDatasets(workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk'))
+        };
+        chartData.roroHandling = {
+            labels: workingVessels.filter(v => v.cargoSubType === 'RORO').map(v => v.name),
+            datasets: createHandlingBalanceDatasets(workingVessels.filter(v => v.cargoSubType === 'RORO'))
+        };
+
+        // --- Dữ liệu cho các biểu đồ [Delay] ---
+        const breakDryVesselsWithDelay = workingVessels.filter(v => ['Break Bulk', 'Dry Bulk'].includes(v.cargoSubType) && v.dailyDelay > 0);
+        chartData.breakDryDelay = {
+            labels: breakDryVesselsWithDelay.map(v => v.name),
+            datasets: [{ label: 'Total Delay (Hours)', data: breakDryVesselsWithDelay.map(v => v.dailyDelay), backgroundColor: '#f59e0b' }]
+        };
+
+        const liquidVesselsWithDelay = workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk' && v.dailyDelay > 0);
+        chartData.liquidDelay = {
+            labels: liquidVesselsWithDelay.map(v => v.name),
+            datasets: [{ label: 'Total Delay (Hours)', data: liquidVesselsWithDelay.map(v => v.dailyDelay), backgroundColor: '#f59e0b' }]
+        };
+
+        const roroVesselsWithDelay = workingVessels.filter(v => v.cargoSubType === 'RORO' && v.dailyDelay > 0);
+        chartData.roroDelay = {
+            labels: roroVesselsWithDelay.map(v => v.name),
+            datasets: [{ label: 'Total Delay (Hours)', data: roroVesselsWithDelay.map(v => v.dailyDelay), backgroundColor: '#f59e0b' }]
+        };
+
+        // --- Dữ liệu cho [Warehouse/Yard Handling] ---
+        const whData = dashboardData.ancillary.warehouseHandling;
+        const whDataKeys = ['handIn', 'loadFromWH', 'handOut', 'discToWH'];
+        chartData.warehouseHandling = {
+            labels: ['Handling In', 'Load from WH', 'Handling Out', 'Disc to WH'],
+            datasets: [
+                { label: 'QTY', data: whDataKeys.map(key => whData[key].QTY), backgroundColor: '#1A234B' },
+                { label: 'MT', data: whDataKeys.map(key => whData[key].MT), backgroundColor: '#7161A9' },
+                { label: 'M3', data: whDataKeys.map(key => whData[key].M3), backgroundColor: '#99CCE3' }
+            ]
+        };
+
+        // --- Dữ liệu cho [Yard & Warehouse Occupancy] ---
+        const yardData = dashboardData.ancillary.yardOccupancy;
+        const yardLabels = Object.keys(yardData);
+        chartData.yardWarehouseOccupancy = {
+            labels: yardLabels,
+            datasets: [
+                { label: 'QTY', data: yardLabels.map(wh => yardData[wh].QTY), backgroundColor: '#1A234B' },
+                { label: 'MT', data: yardLabels.map(wh => yardData[wh].MT), backgroundColor: '#7161A9' },
+                { label: 'M3', data: yardLabels.map(wh => yardData[wh].M3), backgroundColor: '#99CCE3' }
+            ]
+        };
+
+        return chartData;
+    }
+
+    // --- TAB HANDLING ---
+    function setupTabs() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.add('hidden'));
+                button.classList.add('active');
+                document.getElementById(button.getAttribute('aria-controls')).classList.remove('hidden');
+            });
+        });
+        document.getElementById('general-tab').click();
+    }
+
+    // --- CHART DEFAULTS & INITIALIZATION ---
+    window.onload = function() {
+        Chart.defaults.color = '#4b5563';
+        Chart.defaults.borderColor = '#e5e7eb';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.register(ChartDataLabels);
+        
+        setupTabs();
+        
+        document.getElementById('refresh-button').addEventListener('click', () => {
+            const refreshIcon = document.querySelector('#refresh-button svg');
+            refreshIcon.classList.add('rotate-[360deg]');
+            setTimeout(() => { refreshIcon.classList.remove('rotate-[360deg]'); }, 500);
+            renderAllCharts(new Date());
+        });
+
+        renderAllCharts(new Date());
+    }
+    
+    // =================================================================================
+    // --- KHU VỰC VẼ BIỂU ĐỒ (CHART RENDERING) ---
+    // Các chức năng dưới đây chỉ nhận dữ liệu đã được chuẩn bị và tiến hành vẽ.
+    // =================================================================================
+    function drawEmptyChartMessage(canvasId, message) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = "16px 'Inter', sans-serif";
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+    }
+
+    function renderAllCharts(now) {
+        destroyAllCharts();
+        lastRefreshedTime = now;
+        setCurrentDateTime(now); 
+        
+        const currentHour = now.getHours();
+        const workingVessels = dashboardData.vessels.filter(v => v.status === 'ATW');
+        document.getElementById('wharves-count').textContent = workingVessels.length;
+        document.getElementById('anchorage-count').textContent = dashboardData.vessels.filter(v => v.status === 'ATA').length;
+
+        // Chuẩn bị toàn bộ dữ liệu cho các biểu đồ
+        const chartData = prepareAllChartData(now);
+
+        // --- Vẽ các biểu đồ ở tab General Information ---
+        const allVesselNames = dashboardData.vessels.map(v => v.name);
+        const shuffledVessels = allVesselNames.sort(() => 0.5 - Math.random());
+        const randomVesselList = shuffledVessels.slice(0, 16);
+        
+        chartInstances['terminalOccupancyChart'] = new Chart(document.getElementById('terminalOccupancyChart').getContext('2d'), {
+            type: 'doughnut', 
+            data: chartData.terminalOccupancy,
+            options: { 
+                responsive: true, maintainAspectRatio: false, cutout: '60%', 
+                plugins: { 
+                    legend: { position: 'bottom' }, 
+                    datalabels: { color: 'white', font: { weight: 'bold' }, formatter: (v) => v > 0 ? v : '' }, 
+                    tooltip: { 
+                        callbacks: { 
+                            footer: getTooltipFooterCallback(),
+                            label: function(context) {
+                                // For 'Occupied' segment, return an array of strings
+                                if (context.dataIndex === 0) {
+                                    const title = `${context.label}: ${context.formattedValue}`;
+                                    // The array will be rendered as multiple lines
+                                    return [title, ''].concat(randomVesselList); 
+                                }
+                                // For other segments, return a single string
+                                return `${context.label}: ${context.formattedValue}`;
+                            }
+                        } 
+                    } 
+                } 
+            }
+        });
+        
+        document.getElementById('vessels-in-operation-label').textContent = `Vessels in Operation: Break Bulk(${workingVessels.filter(v => v.cargoSubType === 'Break Bulk').length}), Dry Bulk(${workingVessels.filter(v => v.cargoSubType === 'Dry Bulk').length}), Liquid(${workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk').length}), RORO(${workingVessels.filter(v => v.cargoSubType === 'RORO').length})`;
+        
+        chartInstances['cargoOperationChart'] = new Chart(document.getElementById('cargoOperationChart').getContext('2d'), {
+            type: 'bar',
+            data: chartData.cargoOperation,
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, datalabels: { anchor: 'end', align: 'top', formatter: (v) => v > 0 ? v.toLocaleString() : '', font: { weight: 'bold' } }, tooltip: { callbacks: { footer: getTooltipFooterCallback() } } }, scales: { y: { type: 'linear', position: 'left', title: { display: true, text: 'Tonnage (MT)' }, ticks: { callback: (v) => (v >= 1000 ? v / 1000 + 'k' : v) } }, y1: { type: 'linear', position: 'right', title: { display: true, text: 'Quantity (QTY)' }, grid: { drawOnChartArea: false } } } }
+        });
+
+        chartInstances['directIndirectChart'] = new Chart(document.getElementById('directIndirectChart').getContext('2d'), {
+            type: 'bar',
+            data: chartData.directIndirect,
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'top' }, 
+                    datalabels: { color: 'white', font: { weight: 'bold' }, formatter: (v) => v > 100 ? v.toLocaleString() : '' }, 
+                    tooltip: { 
+                        callbacks: { footer: getTooltipFooterCallback() }, 
+                        mode: 'index', intersect: false,
+                        filter: function (tooltipItem) {
+                            const isRoro = tooltipItem.dataIndex === 3;
+                            const isQtyAxis = tooltipItem.dataset.yAxisID === 'yQty';
+                            return isRoro ? isQtyAxis : !isQtyAxis;
+                        }
+                    } 
+                }, 
+                scales: { 
+                    x: { stacked: true, grid: { display: false } },
+                    yTonnage: { stacked: true, type: 'linear', position: 'left', title: { display: true, text: 'Tonnage (MT)' }, ticks: { callback: (v) => (v >= 1000 ? v / 1000 + 'k' : v) } },
+                    yQty: { stacked: true, type: 'linear', position: 'right', title: { display: true, text: 'Quantity (QTY)' }, grid: { drawOnChartArea: false } }
+                } 
+            }
+        });
+        
+        chartInstances['hourlyHandlingChart'] = new Chart(document.getElementById('hourlyHandlingChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartData.cumulativeHandling.labels.slice(0, currentHour + 1),
+                datasets: chartData.cumulativeHandling.datasets.map(ds => ({...ds, data: ds.data.slice(0, currentHour + 1)}))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                elements: { point: { radius: 3, backgroundColor: 'white', borderWidth: 2, hoverRadius: 5 } },
+                plugins: {
+                    title: { display: true, text: 'Cumulative Handling: Tonnage (MT) & Quantity (QTY)', font: { size: 18, weight: 'bold' }, padding: { bottom: 20 } },
+                    legend: { display: true, position: 'bottom', labels: { usePointStyle: true, pointStyle: 'rect', padding: 20 } },
+                    tooltip: { mode: 'index', intersect: false, callbacks: { footer: getTooltipFooterCallback() } },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Time' }, grid: { display: true, color: '#f0f0f0' } },
+                    yTonnage: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Cumulative Tonnage (MT)', font: { weight: 'bold' } } },
+                    yQty: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: 'Cumulative Quantity (QTY)', font: { weight: 'bold' } }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+
+        // --- Vẽ các biểu đồ ở các tab con ---
+        const createTabChart = (id, data, options) => {
+            chartInstances[id] = new Chart(document.getElementById(id).getContext('2d'), { type: 'bar', data, options });
+        };
+        
+        const summaryChartOptions = (unit, isRoro = false) => ({
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'rect' } },
+                tooltip: { mode: 'index', intersect: false, callbacks: { footer: getTooltipFooterCallback(), label: isRoro ? (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y)}` : undefined } },
+                datalabels: { display: false }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Time' }, grid: { color: '#f0f0f0' } },
+                y: { beginAtZero: true, title: { display: true, text: `Cumulative ${unit}` }, ticks: { callback: isRoro ? (v) => Math.round(v) : (v) => v >= 1000 ? `${v/1000}k` : v } }
+            }
+        });
+
+        chartInstances['breakDrySummaryChart'] = new Chart(document.getElementById('breakDrySummaryChart').getContext('2d'), { type: 'line', data: { labels: chartData.breakDrySummary.labels.slice(0, currentHour + 1), datasets: chartData.breakDrySummary.datasets.map(ds => ({...ds, data: ds.data.slice(0, currentHour + 1)}))}, options: summaryChartOptions('MT') });
+        chartInstances['liquidBulkSummaryChart'] = new Chart(document.getElementById('liquidBulkSummaryChart').getContext('2d'), { type: 'line', data: { labels: chartData.liquidBulkSummary.labels.slice(0, currentHour + 1), datasets: chartData.liquidBulkSummary.datasets.map(ds => ({...ds, data: ds.data.slice(0, currentHour + 1)}))}, options: summaryChartOptions('MT') });
+        chartInstances['roroSummaryChart'] = new Chart(document.getElementById('roroSummaryChart').getContext('2d'), { type: 'line', data: { labels: chartData.roroSummary.labels.slice(0, currentHour + 1), datasets: chartData.roroSummary.datasets.map(ds => ({...ds, data: ds.data.slice(0, currentHour + 1)}))}, options: summaryChartOptions('QTY', true) });
+
+        const handlingOptions = (isMt = true) => ({ responsive: true, maintainAspectRatio: false, plugins: { datalabels: { color: '#ffffff', formatter: (v) => v > 0 ? v.toLocaleString() : '' }, tooltip: { callbacks: { footer: getTooltipFooterCallback() } } }, scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: isMt ? (v) => v/1000 + 'k' : undefined } } } });
+        createTabChart('breakDryHandlingChart', chartData.breakDryHandling, handlingOptions());
+        createTabChart('liquidHandlingChart', chartData.liquidHandling, handlingOptions());
+        createTabChart('roroHandlingChart', chartData.roroHandling, handlingOptions(false));
+
+        const delayOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false}, datalabels: { anchor: 'end', align: 'top', color: '#374151' }, tooltip: { callbacks: { footer: getTooltipFooterCallback() } } } };
+        
+        if (chartData.breakDryDelay.labels.length > 0) {
+            createTabChart('breakDryDelayChart', chartData.breakDryDelay, delayOptions);
+        } else {
+            drawEmptyChartMessage('breakDryDelayChart', 'No Break/Dry Bulk vessels with delay.');
+        }
+
+        if (chartData.liquidDelay.labels.length > 0) {
+            createTabChart('liquidDelayChart', chartData.liquidDelay, delayOptions);
+        } else {
+            drawEmptyChartMessage('liquidDelayChart', 'No Liquid Bulk vessels with delay.');
+        }
+
+        if (chartData.roroDelay.labels.length > 0) {
+            createTabChart('roroDelayChart', chartData.roroDelay, delayOptions);
+        } else {
+            drawEmptyChartMessage('roroDelayChart', 'No RORO vessels with delay.');
+        }
+
+        const breakDryProdContainer = document.getElementById('breakDryProductivityContainer'); breakDryProdContainer.innerHTML = ''; workingVessels.filter(v => ['Break Bulk', 'Dry Bulk'].includes(v.cargoSubType)).forEach(vessel => { breakDryProdContainer.innerHTML += createGauge(vessel, 'MT/Hr'); });
+        const liquidProdContainer = document.getElementById('liquidProductivityContainer'); liquidProdContainer.innerHTML = ''; workingVessels.filter(v => v.cargoSubType === 'Liquid Bulk').forEach(vessel => { liquidProdContainer.innerHTML += createGauge(vessel, 'MT/Hr'); });
+        const roroProdContainer = document.getElementById('roroProductivityContainer'); roroProdContainer.innerHTML = ''; workingVessels.filter(v => v.cargoSubType === 'RORO').forEach(vessel => { roroProdContainer.innerHTML += createGauge(vessel, 'QTY/Hr'); });
+
+        chartInstances['warehouseHandlingChart'] = new Chart(document.getElementById('warehouseHandlingChart').getContext('2d'), { 
+            type: 'bar', data: chartData.warehouseHandling, 
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, datalabels: { anchor: 'end', align: 'end', offset: 4, font: { weight: 'bold' }, formatter: (v) => v.toLocaleString(), color: '#1f2937' }, tooltip: { callbacks: { footer: getTooltipFooterCallback() } } }, scales: { x: { ticks: { callback: (v) => (v >= 1000 ? v / 1000 + 'k' : v) } } } }
+        });
+        
+        chartInstances['yardWarehouseOccupancyChart'] = new Chart(document.getElementById('yardWarehouseOccupancyChart').getContext('2d'), {
+            type: 'bar', data: chartData.yardWarehouseOccupancy,
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false, callbacks: { footer: getTooltipFooterCallback() } }, datalabels: { anchor: 'end', align: 'top', formatter: (v) => v > 0 ? v.toLocaleString() : '', font: { weight: 'bold' } } } }
+        });
+    }
+
+</script>
+</body>
+</html>
