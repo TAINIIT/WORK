@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-		<p>Updated on July 2nd, 2025</p>
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb; /* Lighter Gray Background */
             color: #1f2937; /* Dark Gray text */
@@ -176,7 +175,8 @@
                         <div class="chart-container"><canvas id="directIndirectChart"></canvas></div>
                     </div>
                      <div class="chart-card lg:col-span-4">
-                        <div id="cumulativeHandlingContainer" class="chart-container" style="min-height: 350px;">
+                        <h2 class="card-title">Cumulative Handling: Tonnage (MT) & Quantity (QTY)</h2>
+                        <div id="cumulativeHandlingContainer" class="relative chart-container" style="min-height: 320px;">
                             <canvas id="hourlyHandlingChart"></canvas>
                              <div id="no-ops-message" class="hidden absolute inset-0 flex items-center justify-center text-gray-500 text-lg font-semibold">
                                 No Cargo Operations for Today
@@ -452,7 +452,6 @@
         const createCumulativeData = (cargoType) => {
             const relevantVessels = dashboardData.vessels.filter(v => v.cargoSubType === cargoType);
             
-            // --- MODIFICATION START ---
             // Sửa đổi dữ liệu để RORO có tổng sản lượng là 100 cho ví dụ này
             let totalDaily;
             if (cargoType === 'RORO') {
@@ -460,7 +459,6 @@
             } else {
                 totalDaily = relevantVessels.reduce((sum, v) => sum + v.dailyHandled, 0);
             }
-            // --- MODIFICATION END ---
 
             const hourlyRate = totalDaily > 0 ? totalDaily / 24 : 0;
             const cumulativeData = [0];
@@ -726,16 +724,21 @@
                 datasets: chartData.cumulativeHandling.datasets.map(ds => ({...ds, data: ds.data.slice(0, currentHour + 1)}))
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
-                elements: { point: { radius: 3, backgroundColor: 'white', borderWidth: 2, hoverRadius: 5 } },
+                responsive: true,
+                maintainAspectRatio: false,
+                elements: {
+                    point: { radius: 3, backgroundColor: 'white', borderWidth: 2, hoverRadius: 5 }
+                },
                 plugins: {
-                    title: { display: true, text: 'Cumulative Handling: Tonnage (MT) & Quantity (QTY)', font: { size: 18, weight: 'bold' }, padding: { bottom: 20 } },
-                    legend: { display: true, position: 'bottom', labels: { usePointStyle: true, pointStyle: 'rect', padding: 20 } },
-                    // --- MODIFICATION START ---
-                    tooltip: { 
-                        mode: 'index', 
-                        intersect: false, 
-                        callbacks: { 
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { usePointStyle: true, pointStyle: 'rect', padding: 20 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
                             footer: getTooltipFooterCallback(),
                             label: function(context) {
                                 let label = context.dataset.label || '';
@@ -743,32 +746,48 @@
                                     label += ': ';
                                 }
                                 if (context.parsed.y !== null) {
-                                    // Check if the dataset is RORO (using yAxisID) and format the value as an integer
                                     if (context.dataset.yAxisID === 'yQty') {
                                         label += Math.round(context.parsed.y);
                                     } else {
-                                        // For tonnage, use default formatting with locale-specific separators
                                         label += context.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 2 });
                                     }
                                 }
                                 return label;
                             }
-                        } 
+                        }
                     },
-                    // --- MODIFICATION END ---
-                    datalabels: { display: false }
+                    datalabels: {
+                        display: false
+                    }
                 },
                 scales: {
-                    x: { title: { display: true, text: 'Time' }, grid: { display: true, color: '#f0f0f0' } },
-                    yTonnage: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Cumulative Tonnage (MT)', font: { weight: 'bold' } } },
-                    yQty: { 
-                        type: 'linear', 
-                        position: 'right', 
-                        beginAtZero: true, 
-                        title: { display: true, text: 'Cumulative Quantity (QTY)', font: { weight: 'bold' } }, 
-                        grid: { drawOnChartArea: false },
+                    x: {
+                        title: { display: true, text: 'Time' },
+                        grid: { display: true, color: '#f0f0f0' }
+                    },
+                    yTonnage: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Cumulative Tonnage (MT)', font: { weight: 'bold' } },
                         ticks: {
-                            stepSize: 50,
+                            callback: (v) => v >= 1000 ? `${v/1000}k` : v
+                        }
+                    },
+                    // --- MODIFICATION START: Final fix for the QTY axis ---
+                    yQty: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Cumulative Quantity (QTY)', font: { weight: 'bold' } },
+                        grid: {
+                            drawOnChartArea: true,
+                            color: '#e5e7eb',
+                            borderDash: [5, 5]
+                        },
+                        suggestedMax: 100, // Suggest a max value for consistent scale
+                        ticks: {
+                            stepSize: 20, // Set a smaller step size to show more labels
                             callback: function(value) {
                                 if (Number.isInteger(value)) {
                                     return value;
@@ -776,6 +795,7 @@
                             },
                         }
                     }
+                    // --- MODIFICATION END ---
                 }
             }
         });
